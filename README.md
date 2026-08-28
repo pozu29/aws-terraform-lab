@@ -1,6 +1,6 @@
-﻿# AWS Two-Tier Architecture with Terraform (LocalStack)
+﻿# Arquitectura Cloud de 2 Capas con Terraform (LocalStack)
 
-Este repositorio contiene la automatización de una arquitectura de dos capas (Two-Tier) en AWS utilizando **Terraform** (IaC) y **LocalStack**.
+Este repositorio contiene la automatización de una infraestructura de dos capas (Two-Tier) en AWS utilizando **Terraform** (IaC) y **LocalStack**.
 
 ## 🏗️ Arquitectura Desplegada
 
