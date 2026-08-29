@@ -22,53 +22,82 @@ provider "aws" {
   }
 }
 
-# 1. Red Principal (VPC)
+# 1. RED PRINCIPAL (VPC)
 resource "aws_vpc" "main_vpc" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
 
   tags = {
-    Name = "lab-vpc"
+    Name = "lab-vpc-prod"
   }
 }
 
-# 2. Subred Pública (Servidor Web)
+# 2. SUBREDES
+# Subred Publica
 resource "aws_subnet" "public_subnet" {
   vpc_id                  = aws_vpc.main_vpc.id
   cidr_block              = "10.0.1.0/24"
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "public-subnet"
+    Name = "public-subnet-alb"
   }
 }
 
-# 3. Subred Privada (Base de Datos)
-resource "aws_subnet" "private_subnet" {
+# Subred Privada Web
+resource "aws_subnet" "web_private_subnet" {
   vpc_id     = aws_vpc.main_vpc.id
   cidr_block = "10.0.2.0/24"
 
   tags = {
-    Name = "private-subnet"
+    Name = "private-subnet-web"
   }
 }
 
-# 4. Security Group para Servidor Web (EC2)
-resource "aws_security_group" "web_sg" {
-  name        = "web-server-sg"
-  description = "Permitir HTTP y SSH desde internet"
+# Subred Privada Base de Datos
+resource "aws_subnet" "db_private_subnet" {
+  vpc_id     = aws_vpc.main_vpc.id
+  cidr_block = "10.0.3.0/24"
+
+  tags = {
+    Name = "private-subnet-db"
+  }
+}
+
+# 3. INTERNET GATEWAY
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main_vpc.id
+
+  tags = {
+    Name = "main-igw"
+  }
+}
+
+# 4. TABLAS DE ENRUTAMIENTO
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.main_vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+}
+
+resource "aws_route_table_association" "public_assoc" {
+  subnet_id      = aws_subnet.public_subnet.id
+  route_table_id = aws_route_table.public_rt.id
+}
+
+# 5. SECURITY GROUPS (Diseño Multi-Capa)
+# SG simulando el punto de entrada (Frontend)
+resource "aws_security_group" "alb_sg" {
+  name        = "alb-sg"
+  description = "Simulacion SG del balanceador"
   vpc_id      = aws_vpc.main_vpc.id
 
   ingress {
     from_port   = 80
     to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -81,7 +110,28 @@ resource "aws_security_group" "web_sg" {
   }
 }
 
-# 5. Security Group para Base de Datos (Aislada)
+# SG Servidor Web (Solo acepta conexiones del SG Frontend)
+resource "aws_security_group" "web_sg" {
+  name        = "web-server-sg"
+  description = "Permitir trafico unicamente desde el Frontend"
+  vpc_id      = aws_vpc.main_vpc.id
+
+  ingress {
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# SG Base de Datos (Solo acepta conexiones del SG Web)
 resource "aws_security_group" "db_sg" {
   name        = "database-sg"
   description = "Permitir trafico solo desde el servidor web"
@@ -102,28 +152,25 @@ resource "aws_security_group" "db_sg" {
   }
 }
 
-# 6. Servidor Web EC2 (Subred Pública)
+# 6. INSTANCIAS (EC2 Privadas)
 resource "aws_instance" "web_server" {
-  ami           = "ami-0c55b159cbfafe1f0"
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.public_subnet.id
-
+  ami                    = "ami-0c55b159cbfafe1f0"
+  instance_type          = "t2.micro"
+  subnet_id              = aws_subnet.web_private_subnet.id
   vpc_security_group_ids = [aws_security_group.web_sg.id]
 
   tags = {
-    Name = "web-server-ec2"
+    Name = "web-server-ec2-private"
   }
 }
 
-# 7. Servidor de Base de Datos EC2 (Subred Privada)
 resource "aws_instance" "db_server" {
-  ami           = "ami-0c55b159cbfafe1f0"
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.private_subnet.id
-
+  ami                    = "ami-0c55b159cbfafe1f0"
+  instance_type          = "t2.micro"
+  subnet_id              = aws_subnet.db_private_subnet.id
   vpc_security_group_ids = [aws_security_group.db_sg.id]
 
   tags = {
-    Name = "database-server-ec2"
+    Name = "database-server-ec2-private"
   }
 }
