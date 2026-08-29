@@ -1,22 +1,14 @@
-﻿# Arquitectura Cloud de 2 Capas con Terraform (LocalStack)
+﻿# AWS Multi-Tier Secure Architecture with Terraform & LocalStack
 
-Este repositorio contiene la automatización de una infraestructura de dos capas (Two-Tier) en AWS utilizando **Terraform** (IaC) y **LocalStack**.
+Este proyecto despliega una arquitectura en la nube de 3 capas seguras.
 
-## 🏗️ Arquitectura Desplegada
+## Arquitectura Desplegada
+* VPC: 10.0.0.0/16
+* Subred Publica: 10.0.1.0/24
+* Subred Privada Web: 10.0.2.0/24
+* Subred Privada BBDD: 10.0.3.0/24
 
-- **VPC**: Red privada virtual (10.0.0.0/16).
-- **Capas de Subredes**:
-  - Subred Pública (10.0.1.0/24): Servidor Web EC2 con acceso público (HTTP 80 / SSH 22).
-  - Subred Privada (10.0.2.0/24): Servidor de Base de Datos EC2 aislado de internet.
-- **Seguridad**:
-  - Web SG: Permite tráfico HTTP (80) y SSH (22) público.
-  - DB SG: Restringe el acceso PostgreSQL (5432) **únicamente a peticiones originadas desde la EC2 pública**.
-
-## 🚀 Despliegue Local
-
-1. Iniciar contenedor de LocalStack:
-   docker run --rm -it -e DISABLE_EVENTS=1 -p 4566:4566 -p 4510-4559:4510-4559 localstack/localstack:3.0
-
-2. Aplicar configuración:
-   terraform init
-   terraform apply
+## Seguridad Multi-Capa
+1. SG Frontend: Permite acceso publico HTTP (80).
+2. SG Servidor Web: Solo acepta trafico del SG Frontend (80).
+3. SG Base de Datos: Solo acepta trafico del SG Servidor Web (5432).
