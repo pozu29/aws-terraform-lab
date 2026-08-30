@@ -174,3 +174,31 @@ resource "aws_instance" "db_server" {
     Name = "database-server-ec2-private"
   }
 }
+
+# 7. Network ACL (NACL) para proteger la Subred Privada de BBDD
+resource "aws_network_acl" "db_nacl" {
+  vpc_id     = aws_vpc.main_vpc.id
+  subnet_ids = [aws_subnet.db_private_subnet.id]
+
+  ingress {
+    rule_no    = 100
+    action     = "allow"
+    cidr_block = "10.0.2.0/24"
+    from_port  = 5432
+    to_port    = 5432
+    protocol   = "tcp"
+  }
+
+  egress {
+    rule_no    = 100
+    action     = "allow"
+    cidr_block = "10.0.2.0/24"
+    from_port  = 1024
+    to_port    = 65535
+    protocol   = "tcp"
+  }
+
+  tags = {
+    Name = "db-private-nacl"
+  }
+}
